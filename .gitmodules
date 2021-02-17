@@ -1,0 +1,3 @@
+[submodule "twatch-lib"]
+	path = twatch-lib
+	url = https://forge.tedomum.net/virtualabs/twatch-lib.git
