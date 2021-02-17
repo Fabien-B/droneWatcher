@@ -30,17 +30,17 @@ void app_main(void)
     twatch_vibrate_init();
 
     st7789_init();
-    st7789_backlight_on();
     ui_init();
+    st7789_backlight_on();
 
     tile_t pt;
     tile_init(&pt, NULL);
-    pt.background_color = RGB(8, 0, 0);
+    pt.background_color = RGB(0, 4, 0);
 
 
     tile_t t2;
     tile_init(&t2, NULL);
-    t2.background_color = RGB(0, 8, 0);
+    t2.background_color = RGB(8, 0, 0);
 
     tile_t t3;
     tile_init(&t3, NULL);
@@ -61,7 +61,7 @@ void app_main(void)
     //tile_draw(&pt);
 
 
-    drone_sniffer_init();
+    drone_sniffer_start();
 
 
 

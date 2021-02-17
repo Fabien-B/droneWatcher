@@ -6,7 +6,7 @@
 extern char ssids[7][20];
 extern bool ssid_changed;
 
-void drone_sniffer_init();
+void drone_sniffer_start();
 
 //little or big endian ???
 struct uas_raw_payload {

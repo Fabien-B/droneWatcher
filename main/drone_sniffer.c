@@ -277,58 +277,40 @@ void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 
 #define DEFAULT_SCAN_LIST_SIZE 3
 
-void drone_sniffer_start(void *parameter)
+void drone_sniffer_start()
 {
-    // Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK( ret );
+  // Initialize NVS
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK( ret );
 
-for(int i=0; i<7; i++) {
-    ssids[i][0] = '\0';
-}
-
-
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
-    assert(sta_netif);
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-
-
-    wifi_country_t country_conf;
-    country_conf.schan = 1;
-    country_conf.nchan = 13;
-    country_conf.policy = WIFI_COUNTRY_POLICY_AUTO;
-    ESP_ERROR_CHECK(esp_wifi_set_country(&country_conf));
-
-    ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_promiscuous_cb));
-    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE));
-
-
-  while (true)
-  {
-    vTaskDelay(2000 / portTICK_RATE_MS);
+  for(int i=0; i<7; i++) {
+      ssids[i][0] = '\0';
   }
 
-  vTaskDelete( NULL );
-}
 
-#define DS_STACK_SIZE 5000
+  ESP_ERROR_CHECK(esp_netif_init());
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
+  esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+  assert(sta_netif);
 
-StaticTask_t t_buff;
-StackType_t tStackBuff[DS_STACK_SIZE];
+  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+
+  ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
 
 
-void drone_sniffer_init() {
-    xTaskCreateStatic(drone_sniffer_start, "drone_sniffer", DS_STACK_SIZE, (void*)NULL, 1, tStackBuff, &t_buff);
+  wifi_country_t country_conf;
+  country_conf.schan = 1;
+  country_conf.nchan = 13;
+  country_conf.policy = WIFI_COUNTRY_POLICY_AUTO;
+  ESP_ERROR_CHECK(esp_wifi_set_country(&country_conf));
+
+  ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_promiscuous_cb));
+  ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
+  ESP_ERROR_CHECK(esp_wifi_start());
+  ESP_ERROR_CHECK(esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE));
 }
