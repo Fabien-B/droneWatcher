@@ -29,11 +29,11 @@ static const char *TAG = "SNIFFER";
 
 static const uint8_t CID_french_defense[] = {0x6A, 0x5C, 0x35};
 
-static esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-  ESP_LOGI(TAG, "Event : %d", event->event_id);
-  return ESP_OK;
-}
+// static esp_err_t event_handler(void *ctx, system_event_t *event)
+// {
+//   ESP_LOGI(TAG, "Event : %d", event->event_id);
+//   return ESP_OK;
+// }
 
 
 
@@ -70,20 +70,19 @@ void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
       // printf("BSSID: %x:%x:%x:%x:%x:%x\r\n", mgnt_frame->BSSID[0], mgnt_frame->BSSID[1], mgnt_frame->BSSID[2],
       //                             mgnt_frame->BSSID[3], mgnt_frame->BSSID[4], mgnt_frame->BSSID[5]);
       
+      beacon_frame_body_t* bfb = (beacon_frame_body_t*) mgnt_frame->frame_body;
+      vfp_t vfp;
+      wifi_element_t* element_p;
 
+      printf("new var parsing!\r\n");
+      variable_frame_parser_init(&vfp, pkt->rx_ctrl.sig_len, (uint8_t*)mgnt_frame, bfb->variable);
 
-      int offset = 36;
-      while (true)
-      {
-        uint8_t e_type;
-        uint8_t len = get_element_info(pkt->payload + offset, pkt->rx_ctrl.sig_len - offset, &e_type);
-        if (len == 0)
-        {
-          break;
-        }
-
-        if (e_type == 0)
+      while((element_p = vfp_pop(&vfp)) != NULL) {
+        // printf("[DS] element at addr %p\n", &element_p);
+        // printf("[DS] type %d at addr %p\n", element_p->type, &(element_p->type));
+        if (element_p->type == ELT_TYPE_SSID)
         { //SSID
+          printf("ssid\r\n");
           //char ssid[40];
           //memcpy()
           //printf("SSID = %s\n", ssid);
@@ -101,29 +100,25 @@ void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
           //     }
           // }
         }
-        else if (e_type == 0XDD)
+        else if (element_p->type == ELT_TYPE_VENDOR_SPECIFIC)
         { //Vendor Specific
-          uint8_t CID[3];
-          memcpy(CID, pkt->payload + offset + 2, 3);
-          uint8_t vs_type = pkt->payload[offset + 5];
-          bool same = true;
-          for (int i = 0; i < 3; i++)
-          {
-            if (CID[i] != CID_french_defense[i])
-            {
-              same = false;
-            }
+          printf("vendor specific\r\n");
+          if(element_p->length < 3) {
+            printf("WTF VS sans OUI/CID ???\r\n");
+            continue;
           }
-          if (same)
+
+          uint8_t CID[3];
+          memcpy(CID, element_p->p_data, 3);
+          uint8_t vs_type = element_p->p_data[3];         
+          if (memcmp(CID, CID_french_defense, 3) == 0)
           {
-            struct uas_payload raw_info = parse_uav_info(pkt->payload + offset + 6, vs_type, len - 4);
+            struct uas_payload raw_info = parse_uav_info(element_p->p_data + 4, vs_type, element_p->length - 4);
             //printf("SSID = %s\n", ssid);
             printf("l = %d\r\n", sizeof(wifi_header_t));
             display_uas_info(&raw_info);
           }
         }
-
-        offset += len + 2;
       }
     }
   }
