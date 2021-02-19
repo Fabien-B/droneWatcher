@@ -17,8 +17,7 @@
 #include "ui/label.h"
 #include "ui/button.h"
 #include "drone_sniffer.h"
-
-widget_label_t label_ssids[7];
+#include "interface.h"
 
 void app_main(void)
 {
@@ -33,34 +32,10 @@ void app_main(void)
     ui_init();
     st7789_backlight_on();
 
-    tile_t pt;
-    tile_init(&pt, NULL);
-    pt.background_color = RGB(0, 4, 0);
 
-
-    tile_t t2;
-    tile_init(&t2, NULL);
-    t2.background_color = RGB(8, 0, 0);
-
-    tile_t t3;
-    tile_init(&t3, NULL);
-    t3.background_color = RGB(0, 0, 8);
-
-    // widget_label_t label;
-    // widget_label_init(&label, &pt, 0, 0, 240, 30, "Drone Watcher");
-
-
-    // widget_button_t btn;
-    // widget_button_init(&btn, &pt, 50, 50, 100, 100, "yo");
-
-    tile_link_right(&pt, &t2);
-    tile_link_right(&t2, &t3);
-
-    ui_select_tile(&pt);
+    setup_ui();
     
-    //tile_draw(&pt);
-
-
+    
     drone_sniffer_start();
 
 
@@ -73,10 +48,6 @@ void app_main(void)
     //     {200, VIBRATE_OFF},
     // };
 
-    for(int i=0; i<7; i++) {
-            widget_label_init(&label_ssids[i], &pt, 0, 30*i, 240, 30, "-----------");  
-        }
-
     for(;;) {
         //bool p = twatch_pmu_is_userbtn_pressed();
 
@@ -85,14 +56,14 @@ void app_main(void)
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
 
-        if(ssid_changed) {
-            ssid_changed = false;
-            for(int i=0; i<7; i++) {
-                printf("%s", ssids[i]);
-                widget_label_set_text(&label_ssids[i], ssids[i]);
+        // if(ssid_changed) {
+        //     ssid_changed = false;
+        //     for(int i=0; i<7; i++) {
+        //         printf("%s", ssids[i]);
+        //         widget_label_set_text(&label_ssids[i], ssids[i]);
             
-            }
-        }
+        //     }
+        // }
         
     }
 }
