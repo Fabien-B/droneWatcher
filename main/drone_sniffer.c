@@ -18,6 +18,7 @@
 #include "drone_sniffer.h"
 #include "wifi.h"
 #include "uas_rid_fr.h"
+#include <assert.h>
 
 #define MIN(a, b) (a < b ? a : b)
 
@@ -36,20 +37,6 @@ static const uint8_t CID_french_defense[] = {0x6A, 0x5C, 0x35};
 // }
 
 
-
-// char *read_SSID(uint8_t *buf, uint8_t ssid_len)
-// {
-
-//   char *ssid = malloc((ssid_len + 1) * sizeof(char));
-//   for (int i = 0; i < ssid_len; i++)
-//   {
-//     ssid[i] = buf[i];
-//   }
-//   ssid[ssid_len] = 0;
-//   return ssid;
-// }
-
-
 void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 {
   wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
@@ -60,21 +47,13 @@ void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
     if (header->type == 0 && header->subtype == SUBTYPE_BEACON)
     {
       management_frame_t* mgnt_frame = (management_frame_t*) pkt->payload;
-
-      // printf("SA: %x:%x:%x:%x:%x:%x\r\n", mgnt_frame->SA[0], mgnt_frame->SA[1], mgnt_frame->SA[2],
-      //                             mgnt_frame->SA[3], mgnt_frame->SA[4], mgnt_frame->SA[5]);
-
-      // printf("DA: %x:%x:%x:%x:%x:%x\r\n", mgnt_frame->DA[0], mgnt_frame->DA[1], mgnt_frame->DA[2],
-      //                             mgnt_frame->DA[3], mgnt_frame->DA[4], mgnt_frame->DA[5]);
-
-      // printf("BSSID: %x:%x:%x:%x:%x:%x\r\n", mgnt_frame->BSSID[0], mgnt_frame->BSSID[1], mgnt_frame->BSSID[2],
-      //                             mgnt_frame->BSSID[3], mgnt_frame->BSSID[4], mgnt_frame->BSSID[5]);
-      
       beacon_frame_body_t* bfb = (beacon_frame_body_t*) mgnt_frame->frame_body;
       vfp_t vfp;
-      wifi_element_t* element_p;
+      wifi_element_t* element_p = NULL;
+      
+      //SSID is 32 bytes long max. Make it 33 to add \0.
+      char ssid[33] = {0};
 
-      printf("new var parsing!\r\n");
       variable_frame_parser_init(&vfp, pkt->rx_ctrl.sig_len, (uint8_t*)mgnt_frame, bfb->variable);
 
       while((element_p = vfp_pop(&vfp)) != NULL) {
@@ -82,27 +61,12 @@ void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
         // printf("[DS] type %d at addr %p\n", element_p->type, &(element_p->type));
         if (element_p->type == ELT_TYPE_SSID)
         { //SSID
-          printf("ssid\r\n");
-          //char ssid[40];
-          //memcpy()
-          //printf("SSID = %s\n", ssid);
-
-          // for(int i=0; i<7; i++) {
-          //     if(strcmp(ssids[i], ssid) == 0) {
-          //         // ssid already saved
-          //         break;
-          //     }
-          //     if(ssids[i][0] == '\0') {
-          //         //end of recorded SSIDs, we put it here
-          //         strcpy(ssids[i], ssid);
-          //         ssid_changed = true;
-          //         break;
-          //     }
-          // }
+          memcpy(ssid, element_p->p_data, element_p->length);
+          ssid[element_p->length] = '\0';
+          printf("%d SSID = %s\n", pkt->rx_ctrl.channel, ssid);
         }
         else if (element_p->type == ELT_TYPE_VENDOR_SPECIFIC)
         { //Vendor Specific
-          printf("vendor specific\r\n");
           if(element_p->length < 3) {
             printf("WTF VS sans OUI/CID ???\r\n");
             continue;
@@ -113,10 +77,10 @@ void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
           uint8_t vs_type = element_p->p_data[3];         
           if (memcmp(CID, CID_french_defense, 3) == 0)
           {
-            struct uas_payload raw_info = parse_uav_info(element_p->p_data + 4, vs_type, element_p->length - 4);
+            uas_payload_t payload;
+            parse_uav_info(&payload, element_p->p_data + 4, vs_type, element_p->length - 4);
             //printf("SSID = %s\n", ssid);
-            printf("l = %d\r\n", sizeof(wifi_header_t));
-            display_uas_info(&raw_info);
+            display_uas_info(&payload);
           }
         }
       }
@@ -125,6 +89,17 @@ void wifi_promiscuous_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 }
 
 #define DEFAULT_SCAN_LIST_SIZE 3
+
+void hop_channel(void* param) {
+  (void)param;
+  int channel = 0;
+  while(true) {
+    channel = (channel + 1) % 12;
+    ESP_ERROR_CHECK(esp_wifi_set_channel(channel + 1, WIFI_SECOND_CHAN_NONE));
+    vTaskDelay(200/portTICK_PERIOD_MS);
+  }
+}
+
 
 void drone_sniffer_start()
 {
@@ -162,4 +137,7 @@ void drone_sniffer_start()
   ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
   ESP_ERROR_CHECK(esp_wifi_start());
   ESP_ERROR_CHECK(esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE));
+
+  // xTaskCreate(hop_channel, "channel hoping", 2000, NULL, 1, NULL);
 }
+

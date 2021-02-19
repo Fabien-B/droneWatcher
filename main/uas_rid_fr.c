@@ -6,107 +6,99 @@
 #include "tlv.h"
 
 #define fill_swap32(dst)                       \
-  int32_t *be = (int32_t *)(buf + offset + 2); \
+  int32_t *be = (int32_t *)(tlv->p_data); \
   dst = __builtin_bswap32(*be);                \
-  payload.types |= (1 << field_type);
+  payload->types |= (1 << field_type);
 
 #define fill_swap16(dst)                       \
-  int16_t *be = (int16_t *)(buf + offset + 2); \
+  int16_t *be = (int16_t *)(tlv->p_data); \
   dst = __builtin_bswap16(*be);                \
-  payload.types |= (1 << field_type);
+  payload->types |= (1 << field_type);
 
 #define fill_swap16u(dst)                        \
-  uint16_t *be = (uint16_t *)(buf + offset + 2); \
+  uint16_t *be = (uint16_t *)(tlv->p_data); \
   dst = __builtin_bswap16(*be);                  \
-  payload.types |= (1 << field_type);
+  payload->types |= (1 << field_type);
 
 
-
-struct uas_payload parse_uav_info(uint8_t *buf, uint8_t vs_type, uint8_t len)
+void parse_uav_info(uas_payload_t* payload, uint8_t *buf, uint8_t vs_type, uint8_t len)
 {
 
-  struct uas_payload payload = {0}; //init empty payload
-  payload.id_fr[30] = '\0';
-  int offset = 0;
-  while (offset < len)
-  {
-    enum uas_field_type field_type = (enum uas_field_type)buf[offset];
-    int field_len = buf[offset + 1];
+  payload->id_fr[30] = '\0';
+  
+  tlv_info_t tlv_info;
+  tlv_info_init(&tlv_info, buf, len);
+  tlv_t* tlv = NULL;
 
-    if (offset + field_len + 2 > len)
-    { //is the announced field length compatible with the buffer length ?
-      break;
-    }
+  while ((tlv = tlv_pop(&tlv_info)) != NULL)
+  {
+    enum uas_field_type field_type = (enum uas_field_type)tlv->type;
 
     if (field_type == UAS_ID_FR)
     {
-      assert(field_len == 30);
-      memcpy(payload.id_fr, buf + offset + 2, field_len); // copy data in structure
-      payload.types |= (1 << field_type);                 // set field flag
+      assert(tlv->length == 30);
+      memcpy(payload->id_fr, tlv->p_data, tlv->length); // copy data in structure
+      payload->types |= (1 << field_type);                 // set field flag
     }
     else if (field_type == UAS_ID_ANSI_UAS)
     {
       // Max lenght is 4 (MFR) + 1 (len) + 15 (MFR's SN) = 20
-      assert(field_len <= 20);
-      memcpy(payload.id_fr, buf + offset + 2, field_len);
-      payload.id_fr[field_len] = '\0';
-      payload.types |= (1 << UAS_ID_ANSI_UAS);
+      assert(tlv->length <= 20);
+      memcpy(payload->id_fr, tlv->p_data, tlv->length);
+      payload->id_fr[tlv->length] = '\0';
+      payload->types |= (1 << UAS_ID_ANSI_UAS);
     }
     else if (field_type == UAS_LAT)
     {
-      assert(field_len == 4);
-      fill_swap32(payload.lat);
+      assert(tlv->length == 4);
+      fill_swap32(payload->lat);
     }
     else if (field_type == UAS_LON)
     {
-      assert(field_len == 4);
-      fill_swap32(payload.lon)
+      assert(tlv->length == 4);
+      fill_swap32(payload->lon)
     }
     else if (field_type == UAS_HMSL)
     {
-      assert(field_len == 2);
-      fill_swap16(payload.hmsl)
+      assert(tlv->length == 2);
+      fill_swap16(payload->hmsl)
     }
     else if (field_type == UAS_HAGL)
     {
-      assert(field_len == 2);
-      fill_swap16(payload.hagl)
+      assert(tlv->length == 2);
+      fill_swap16(payload->hagl)
     }
     else if (field_type == UAS_LAT_TO)
     {
-      assert(field_len == 4);
-      fill_swap32(payload.lat_to)
+      assert(tlv->length == 4);
+      fill_swap32(payload->lat_to)
     }
     else if (field_type == UAS_LON_TO)
     {
-      assert(field_len == 4);
-      fill_swap32(payload.lon_to)
+      assert(tlv->length == 4);
+      fill_swap32(payload->lon_to)
     }
     else if (field_type == UAS_H_SPEED)
     {
-      assert(field_len == 1);
-      payload.h_speed = buf[offset + 2];
-      payload.types |= (1 << field_type);
+      assert(tlv->length == 1);
+      payload->h_speed = tlv->p_data[0];
+      payload->types |= (1 << field_type);
     }
     else if (field_type == UAS_ROUTE)
     {
-      assert(field_len == 2);
-      fill_swap16u(payload.route)
+      assert(tlv->length == 2);
+      fill_swap16u(payload->route)
     }
     else if (field_type == UAS_PROTOCOL_VERSION)
     {
-      assert(field_len == 1);
-      assert(buf[offset + 2] == 0x01);
+      assert(tlv->length == 1);
+      assert(tlv->p_data[0] == 0x01);
     }
-
-    offset += field_len + 2;
   }
-
-  return payload;
 }
 
 
-void display_uas_info(struct uas_payload *info)
+void display_uas_info(uas_payload_t *info)
 {
   if (info->types & (1 << UAS_ID_FR))
   {

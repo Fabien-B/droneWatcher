@@ -63,6 +63,3 @@ typedef struct __attribute__((packed)) {
     uint8_t capability_info[2];
     uint8_t variable[0];
 } beacon_frame_body_t;
-
-
-uint8_t get_element_info(uint8_t *buf, int max_len, uint8_t *type);

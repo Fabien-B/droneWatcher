@@ -2,7 +2,7 @@
 
 #include "stdint.h"
 
-struct uas_payload {
+typedef struct {
   char id_fr[31];    //manufacturer trigram on 3 bytes, aircraft or beacon model on 3 bytes, aircraft or beacon serial number on 24 bytes (with 0 padding if necessary).
   int32_t lat;      // [-90; 90] * 10e5
   int32_t lon;      // ]180; 180]  * 10e5
@@ -14,7 +14,7 @@ struct uas_payload {
   uint16_t route;   // [0; 359]
 
   uint16_t types; // For now, types are in [1; 11]. Use bitshift to flag existing fields.
-};
+} uas_payload_t;
 
 enum uas_field_type {
   // 0 reserved for future use
@@ -33,6 +33,6 @@ enum uas_field_type {
 };
 
 
-struct uas_payload parse_uav_info(uint8_t *buf, uint8_t vs_type, uint8_t len);
-void display_uas_info(struct uas_payload *info);
+void parse_uav_info(uas_payload_t* payload, uint8_t *buf, uint8_t vs_type, uint8_t len);
+void display_uas_info(uas_payload_t *info);
 
