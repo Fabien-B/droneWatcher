@@ -32,7 +32,8 @@
     "button.h": "c",
     "event_groups.h": "c",
     "freertosconfig.h": "c",
-    "drone_sniffer.h": "c"
+    "drone_sniffer.h": "c",
+    "wifi.h": "c"
   },
   "git.ignoreLimitWarning": true
 }

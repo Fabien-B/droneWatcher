@@ -1,4 +1,4 @@
 idf_component_register(
-    SRCS "main.c" "drone_sniffer.c"
+    SRCS "wifi.c" "uas_rid_fr.c" "main.c" "drone_sniffer.c"
     INCLUDE_DIRS ""
 )
